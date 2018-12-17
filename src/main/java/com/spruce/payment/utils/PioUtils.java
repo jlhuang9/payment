@@ -3,6 +3,7 @@ package com.spruce.payment.utils;
 import com.alibaba.fastjson.JSONObject;
 import com.spruce.payment.dto.StaffPojo;
 import com.spruce.payment.helper.GroupHelper;
+import com.spruce.payment.helper.RowToBean;
 import org.apache.poi.hssf.usermodel.HSSFDataFormat;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DateUtil;
@@ -22,9 +23,6 @@ import java.util.List;
 
 public class PioUtils {
 
-    interface Parse<T>{
-
-    }
 
     public static void main(String[] args) {
 //        String fileName = "C:\\Users\\liush\\Desktop\\发送测试\\nc人员.xlsx";
@@ -46,6 +44,30 @@ public class PioUtils {
         return new XSSFWorkbook(inputStream);
     }
 
+    public static <T> List<T> parseDefalt(XSSFWorkbook wb, int startRow, RowToBean<T> rowToBean) {
+        List<T> result = new ArrayList<>();
+        XSSFSheet sheet = wb.getSheetAt(0);
+        int columnNum = 0;
+        if (sheet.getRow(0) != null) {
+            columnNum = sheet.getRow(0).getLastCellNum()
+                    - sheet.getRow(0).getFirstCellNum();
+        }
+        if (columnNum > 0) {
+            int num = 0;
+            for (Row cells : sheet) {
+                if (num < startRow) {
+                    num++;
+                    continue;
+                }
+                T t = rowToBean.rowToBean(cells);
+//                System.out.println(num + "    >>>>>>>    " + JSONObject.toJSONString(staffPojo));
+                result.add(t);
+                num++;
+            }
+        }
+        return result;
+    }
+
     public static List<StaffPojo> parseNcStaff(XSSFWorkbook wb, GroupHelper groupHelper) {
         List<StaffPojo> result = new ArrayList<>();
         XSSFSheet sheet = wb.getSheetAt(0);
@@ -61,7 +83,7 @@ public class PioUtils {
                     num++;
                     continue;
                 }
-                StaffPojo staffPojo = parseToStaff(cells,groupHelper);
+                StaffPojo staffPojo = parseToStaff(cells, groupHelper);
 //                System.out.println(num + "    >>>>>>>    " + JSONObject.toJSONString(staffPojo));
                 result.add(staffPojo);
                 num++;
@@ -70,33 +92,33 @@ public class PioUtils {
         return result;
     }
 
-    public static StaffPojo parseToStaff(Row row,GroupHelper groupHelper) {
+    public static StaffPojo parseToStaff(Row row, GroupHelper groupHelper) {
         StaffPojo staffPojo = new StaffPojo();
         staffPojo.setNcId(Long.parseLong(getStringValue(row, 0)));
-        staffPojo.setName(getStringValue(row,1));
-        staffPojo.setIdentityCard(getStringValue(row,2));
-        staffPojo.setCity(getStringValue(row,3));
-        staffPojo.setAddr(getStringValue(row,4));
-        staffPojo.setCompilationAddr(getStringValue(row,5));
+        staffPojo.setName(getStringValue(row, 1));
+        staffPojo.setIdentityCard(getStringValue(row, 2));
+        staffPojo.setCity(getStringValue(row, 3));
+        staffPojo.setAddr(getStringValue(row, 4));
+        staffPojo.setCompilationAddr(getStringValue(row, 5));
 
         String first = getStringValue(row, 7);
         String second = getStringValue(row, 8);
         String third = getStringValue(row, 9);
         String fourth = getStringValue(row, 10);
         staffPojo.setFirestGroupId(groupHelper.getFirestGroupId(first));
-        staffPojo.setFirestGroupId(groupHelper.getSecondGroupId(second,first));
-        staffPojo.setFirestGroupId(groupHelper.getThirdGroupId(third,second));
+        staffPojo.setFirestGroupId(groupHelper.getSecondGroupId(second, first));
+        staffPojo.setFirestGroupId(groupHelper.getThirdGroupId(third, second));
         staffPojo.setFirestGroupId(groupHelper.getFourthGroupId(fourth, third));
 
-        staffPojo.setJob(getStringValue(row,11));
-        staffPojo.setRank(getStringValue(row,12));
+        staffPojo.setJob(getStringValue(row, 11));
+        staffPojo.setRank(getStringValue(row, 12));
         staffPojo.setEntryDate(row.getCell(13).getDateCellValue());
-        staffPojo.setIsProbation(getStringValue(row,14).equals("是") ? 1 : 0);
+        staffPojo.setIsProbation(getStringValue(row, 14).equals("是") ? 1 : 0);
         staffPojo.setPositiveDate(row.getCell(15).getDateCellValue());
         staffPojo.setTermDate(row.getCell(16).getDateCellValue());
-        staffPojo.setIsProduction(getStringValue(row,23).equals("是") ? 1 : 0);
-        staffPojo.setIsLocal(getStringValue(row,24).equals("自有") ? 0 : 1);
-        staffPojo.setDispatchCompany(getStringValue(row,25));
+        staffPojo.setIsProduction(getStringValue(row, 23).equals("是") ? 1 : 0);
+        staffPojo.setIsLocal(getStringValue(row, 24).equals("自有") ? 0 : 1);
+        staffPojo.setDispatchCompany(getStringValue(row, 25));
         return staffPojo;
     }
 
@@ -104,7 +126,7 @@ public class PioUtils {
         return getStringValue(row.getCell(index));
     }
 
-    public static String getStringValue(Cell cell) {
+    public static synchronized String getStringValue(Cell cell) {
         String result = "";
         switch (cell.getCellType()) {
             case Cell.CELL_TYPE_BLANK:
@@ -128,7 +150,6 @@ public class PioUtils {
                         sdf = new SimpleDateFormat("yyyy/MM/dd");
                     }
                     Date date = cell.getDateCellValue();
-                    System.out.print(sdf.format(date) );
                 } else {
                     cell.setCellType(Cell.CELL_TYPE_STRING);
                     String temp = cell.getStringCellValue();
@@ -161,11 +182,12 @@ public class PioUtils {
                     Double cny = Double.parseDouble(temp);//6.2041
                     DecimalFormat df = new DecimalFormat("0.00");
                     String CNY = df.format(cny);
-                    System.out.print(CNY );
+                    System.out.print(CNY);
                 } else {
                     result = temp.trim();
 
                 }
+                break;
             default:
                 result = "";
                 break;
